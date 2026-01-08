@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fake News Detection</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <div class="card">
+            <div class="header">
+                <h1>🔍 Fake News Detection</h1>
+                <p class="subtitle">Powered by AI - Analyze news articles instantly</p>
+            </div>
+
+            <div class="content">
+                <div class="input-section">
+                    <label for="newsInput">Paste your news article here:</label>
+                    <textarea 
+                        id="newsInput" 
+                        placeholder="Enter news text here... (minimum 10 characters)" 
+                        rows="8"
+                    ></textarea>
+                </div>
+
+                <button id="checkBtn" class="btn-check" onclick="checkNews()">
+                    Check News
+                </button>
+
+                <div id="loadingSpinner" class="spinner hidden"></div>
+
+                <div id="resultSection" class="result-section hidden">
+                    <div id="resultCard" class="result-card">
+                        <div class="result-label">Prediction:</div>
+                        <div id="prediction" class="prediction-text"></div>
+
+                        <div class="result-label" style="margin-top: 20px;">Confidence Score:</div>
+                        <div class="confidence-container">
+                            <div id="confidenceBar" class="confidence-bar">
+                                <div id="confidenceFill" class="confidence-fill"></div>
+                            </div>
+                            <div id="confidenceText" class="confidence-text"></div>
+                        </div>
+                    </div>
+
+                    <button class="btn-reset" onclick="resetForm()">Analyze Another</button>
+                </div>
+
+                <div id="errorSection" class="error-section hidden">
+                    <div class="error-message" id="errorMessage"></div>
+                    <button class="btn-reset" onclick="clearError()">Try Again</button>
+                </div>
+            </div>
+
+            <div class="footer">
+                <p>This tool uses AI for analysis. Results are indicative and should not be the sole basis for decision-making.</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Function to check news
+        async function checkNews() {
+            const newsText = document.getElementById('newsInput').value.trim();
+
+            // Clear previous results
+            clearError();
+            document.getElementById('resultSection').classList.add('hidden');
+
+            // Validate input
+            if (!newsText) {
+                showError('Please enter some news text');
+                return;
+            }
+
+            if (newsText.length < 10) {
+                showError('Please enter at least 10 characters');
+                return;
+            }
+
+            // Show loading spinner
+            document.getElementById('loadingSpinner').classList.remove('hidden');
+            document.getElementById('checkBtn').disabled = true;
+
+            try {
+                // Send request to backend
+                const response = await fetch('/check-news', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        news_text: newsText
+                    })
+                });
+
+                const data = await response.json();
+
+                // Hide loading spinner
+                document.getElementById('loadingSpinner').classList.add('hidden');
+                document.getElementById('checkBtn').disabled = false;
+
+                if (response.ok && data.status === 'success') {
+                    displayResult(data);
+                } else {
+                    showError(data.error || 'An error occurred');
+                }
+
+            } catch (error) {
+                // Hide loading spinner
+                document.getElementById('loadingSpinner').classList.add('hidden');
+                document.getElementById('checkBtn').disabled = false;
+                showError('Network error: Could not connect to server');
+                console.error('Error:', error);
+            }
+        }
+
+        // Function to display results
+        function displayResult(data) {
+            const predictionElement = document.getElementById('prediction');
+            const confidenceText = document.getElementById('confidenceText');
+            const confidenceFill = document.getElementById('confidenceFill');
+            const resultCard = document.getElementById('resultCard');
+
+            // Set prediction
+            predictionElement.textContent = data.prediction;
+            predictionElement.style.color = data.color;
+
+            // Set confidence
+            confidenceText.textContent = `${data.confidence}%`;
+            confidenceFill.style.width = `${data.confidence}%`;
+            confidenceFill.style.backgroundColor = data.color;
+
+            // Update card styling
+            if (data.color === 'red') {
+                resultCard.style.borderLeftColor = '#e74c3c';
+            } else {
+                resultCard.style.borderLeftColor = '#27ae60';
+            }
+
+            // Show result section
+            document.getElementById('resultSection').classList.remove('hidden');
+        }
+
+        // Function to show error
+        function showError(message) {
+            document.getElementById('errorMessage').textContent = message;
+            document.getElementById('errorSection').classList.remove('hidden');
+        }
+
+        // Function to clear error
+        function clearError() {
+            document.getElementById('errorSection').classList.add('hidden');
+            document.getElementById('errorMessage').textContent = '';
+        }
+
+        // Function to reset form
+        function resetForm() {
+            document.getElementById('newsInput').value = '';
+            document.getElementById('resultSection').classList.add('hidden');
+            document.getElementById('newsInput').focus();
+        }
+
+        // Allow Enter+Ctrl to submit (optional)
+        document.getElementById('newsInput').addEventListener('keydown', function(event) {
+            if (event.ctrlKey && event.key === 'Enter') {
+                checkNews();
+            }
+        });
+
+        // Focus input on page load
+        window.addEventListener('load', function() {
+            document.getElementById('newsInput').focus();
+        });
+    </script>
+</body>
+</html>
